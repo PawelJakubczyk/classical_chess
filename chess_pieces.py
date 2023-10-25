@@ -1,4 +1,4 @@
-from utilities import type_validator
+from utilities import type_validator, range_validator, value_options_validator
 
 
 class Chessman:
@@ -6,12 +6,17 @@ class Chessman:
     color_dict: dict = {'b': 'black', 'w': 'white'}
     move_count: int = 0
     move_memory_dict: dict = {}
-    fields_status = [[[None, None, None] for _ in range(8)] for _ in range(8)]
+    fields_statuses = [[[None, None, None] for _ in range(8)] for _ in range(8)]
 
     def __init__(self, row: int, column: int, colour: str) -> None:
-        type_validator(row, 'int', 'Chessman')
-        type_validator(column, 'int', 'Chessman')
-        type_validator(colour, 'str', 'Chessman')
+        type_validator(row, int, self.__class__.__name__)
+        type_validator(column, int, self.__class__.__name__)
+        type_validator(colour, str, self.__class__.__name__)
+
+        range_validator(row, range(0, 8), self.__class__.__name__)
+        range_validator(column, range(0, 8), self.__class__.__name__)
+        value_options_validator(colour, ['w', 'b'], self.__class__.__name__)
+
         if colour not in ['w', 'b']:
             raise ValueError('Class: Chessman - arg colour must be "w"(white) or "b"(black)')
         self.row = row
@@ -34,7 +39,7 @@ class Chessman:
 
         chessboard[self.row][self.column] = self.__class__.__name__[0]
 
-        print("    " + " ".join([chr(65 + i) for i in range(8)]))
+        print("   " + " ".join([chr(65 + i) for i in range(8)]))
         for i in range(8):
             print(f"{8 - i}  " + " ".join(chessboard[i]))
 
@@ -46,15 +51,10 @@ class Chessman:
         colour:                 {self.colour}
         move_count:             {self.move_count}
         move_memory_dict:       {self.move_memory_dict}
-        fields_status:          {self.fields_status}
+        fields_statuses:          {self.fields_statuses}
         possibility_moves_list: {self.possibility_moves_list}
         """)
         self.print_possibility_move()
-
-
-class PawnTail(Chessman):
-    def __str__(self) -> str:
-        return ''
 
 
 class Pawn(Chessman):
@@ -74,33 +74,32 @@ class Pawn(Chessman):
 
         # first move give 2 field move possibility
         if (self.row == starting_row
-                and self.fields_status[self.row + 2 * step][self.column][0] is None
-                and self.fields_status[self.row + step][self.column][0] is None):
+                and self.fields_statuses[self.row + 2 * step][self.column][0] is None
+                and self.fields_statuses[self.row + step][self.column][0] is None):
             self.possibility_moves_list.append([self.row + 2 * step, self.column + 0])
         # normal move one step forward
-        if self.fields_status[self.row + step][self.column][0] is None:
+        if self.fields_statuses[self.row + step][self.column][0] is None:
             self.possibility_moves_list.append([self.row + step, self.column + 0])
         # paws beats left and right side
         for side in [-1, 1]:
             # We make sure we have possibility moves inside board
             if (self.column + side in range(0, 8)
-                    and (self.fields_status[self.row + step][self.column + side][0] == 'Enemy'
-                         or self.fields_status[self.row + step][self.column + side][1] == 'Enemy_Tail')):
+                    and (self.fields_statuses[self.row + step][self.column + side][0] == 'Enemy'
+                         or self.fields_statuses[self.row + step][self.column + side][1] == 'Enemy_Tail')):
                 self.possibility_moves_list.append([self.row + step, self.column + side])
 
 
 class Knight(Chessman):
     chessman_range = [[-1, 2], [1, 2], [1, -2], [-1, -2], [-2, 1], [2, 1], [2, -1], [-2, -1]]
 
-    def calculate_moves(self, for_inheritance: bool = True) -> list:
+    def calculate_moves(self, for_inheritance: bool = False) -> list:
         if not for_inheritance:
             self.possibility_moves_list = []
         for move_row, move_col in self.chessman_range:
             # We make sure we have possibility moves inside board
-            if (self.row + move_row in range(0, 8)
-                    and self.column + move_col in range(0, 8)
+            if (self.row + move_row in range(0, 8) and self.column + move_col in range(0, 8)
                     # We make sure Ally block possibility to move
-                    and self.fields_status[self.row + move_row][self.column + move_col][0] != 'Ally'):
+                    and self.fields_statuses[self.row + move_row][self.column + move_col][0] != 'Ally'):
                 self.possibility_moves_list.append([self.row + move_row, self.column + move_col])
         return self.possibility_moves_list
 
@@ -126,7 +125,7 @@ class Bishop(Chessman):
         for hor_dir, vert_dir, limit_to_move in directions:
             for fields in range(1, limit_to_move + 1):
                 fields_to_check = [self.row + fields * hor_dir, self.column + fields * vert_dir]
-                match self.fields_status[self.row + fields * hor_dir][self.column + fields * vert_dir][0]:
+                match self.fields_statuses[self.row + fields * hor_dir][self.column + fields * vert_dir][0]:
                     case 'Ally':
                         break
                     case 'Enemy':
@@ -152,7 +151,7 @@ class Rock(Chessman):
         for hor_dir, vert_dir, limit_to_move in directions:
             for fields in range(1, limit_to_move + 1):
                 fields_to_check = [self.row + fields * hor_dir, self.column + fields * vert_dir]
-                match self.fields_status[self.row + fields * hor_dir][self.column + fields * vert_dir][0]:
+                match self.fields_statuses[self.row + fields * hor_dir][self.column + fields * vert_dir][0]:
                     case 'Ally':
                         break
                     case 'Enemy':
@@ -175,12 +174,13 @@ class King(Knight):
     chessman_range = [[1, -1], [-1, 1], [1, 1], [-1, -1], [0, 1], [0, -1], [-1, 0], [1, 0]]
 
     def calculate_moves(self, for_inheritance: bool = True) -> None:
+        self.possibility_moves_list = []
         super(King, self).calculate_moves()
         super(Knight, self).calculate_moves(True)
         if self.move_count == 0:
             if self.colour == 'w':
                 print()
-                if (self.fields_status[7][7][2] == 0
-                        and self.fields_status[7][6][0] is None
-                        and self.fields_status[7][5][0] is None):
+                if (self.fields_statuses[7][7][2] == 0
+                        and self.fields_statuses[7][6][0] is None
+                        and self.fields_statuses[7][5][0] is None):
                     pass

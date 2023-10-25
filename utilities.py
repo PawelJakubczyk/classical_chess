@@ -1,12 +1,16 @@
-def type_validator(arg, type_to_val: str, unique: str) -> None:
-    """ Check arg(argument) have correct type data(type_to_val). if not return error with unique key(unique) """
-    for val_arg in [type_to_val, unique]:
-        if not isinstance(val_arg, str):
-            raise TypeError(f'{val_arg} must by type str')
-    try:
-        eval(type_to_val)
-    except:
-        raise ValueError('function: type_validator - type_to_val must be an name of data'
-                         'tape of arg and eval(type_to_val) must return data type')
-    if not isinstance(arg, eval(type_to_val)):
-        raise TypeError(f'function:{unique} - {arg} must by type {type_to_val}')
+from typing import Any, Type
+
+
+def type_validator(arg: Any, expected_type: Type, unique_key: str) -> None:
+    if not isinstance(arg, expected_type):
+        raise TypeError(f'{unique_key} - {arg} must be of type {expected_type.__name__}')
+
+
+def range_validator(value: int, value_range: range, unique_key: str) -> None:
+    if value not in value_range:
+        raise ValueError(f'{unique_key} - {value} must be in the range [{lower_limit}, {upper_limit}]')
+
+
+def value_options_validator(value: Any, value_list: list, unique_key: str) -> None:
+    if value not in value_list:
+        raise ValueError(f'{unique_key} - {value} must be one of the following values: {value_list}')
